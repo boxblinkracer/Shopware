@@ -11,7 +11,9 @@ use MollieShopware\Components\ApplePayDirect\ApplePayDirectFactory;
 use MollieShopware\Components\Config;
 use MollieShopware\Components\Constants\PaymentMethod;
 use MollieShopware\Components\Constants\PaymentStatus;
+use MollieShopware\Components\CurrentCustomer;
 use MollieShopware\Components\CustomConfig\CustomConfig;
+use MollieShopware\Components\iDEAL\iDEALInterface;
 use MollieShopware\Components\MollieApi\LineItemsBuilder;
 use MollieShopware\Components\MollieApiFactory;
 use MollieShopware\Exceptions\MollieOrderNotFound;
@@ -20,6 +22,7 @@ use MollieShopware\Gateways\MollieGatewayInterface;
 use MollieShopware\Models\OrderLines;
 use MollieShopware\Models\Transaction;
 use MollieShopware\Models\TransactionRepository;
+use Shopware\Models\Customer\Customer;
 use Shopware\Models\Order\Order;
 use Shopware\Models\Order\Status;
 
@@ -536,14 +539,24 @@ class PaymentService
 
     /**
      * Get the id of the chosen ideal issuer from database
-     *
      * @return string
+     * @throws \Exception
      */
     protected function getIdealIssuer()
     {
-        /** @var IdealService $idealService */
-        $idealService = Shopware()->Container()->get('mollie_shopware.ideal_service');
-        return $idealService->getSelectedIssuer();
+        /** @var iDEALInterface $ideal */
+        $idealService = Shopware()->Container()->get('mollie_shopware.components.ideal');
+
+        /** @var CurrentCustomer $customer */
+        $customers = Shopware()->Container()->get('mollie_shopware.customer');
+
+        $customer = $customers->getCurrent();
+
+        if (!$customer instanceof Customer) {
+            throw new \Exception('No active customer found for iDEAL');
+        }
+
+        return $idealService->getCustomerIssuer($customers);
     }
 
     /**
